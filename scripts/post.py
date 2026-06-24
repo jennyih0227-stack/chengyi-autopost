@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """
 誠毅傳承 — 三平台自動發文腳本
-讀取 schedule.csv，找出「今天」該發的貼文，發布到 Telegram / Facebook / Instagram。
+讀取 schedule.csv，找出「今天」該發的貼文，發布到 Threads / Facebook / Instagram。
 
 所有密鑰透過環境變數（GitHub Secrets）注入，不寫死在程式裡。
 需要的環境變數：
-  TG_BOT_TOKEN, TG_CHAT_ID
+  THREADS_USER_ID, THREADS_ACCESS_TOKEN
   FB_PAGE_ID, FB_PAGE_TOKEN
-  IG_USER_ID, IG_IMAGE_BASE_URL   (IG 需要圖片公開網址)
+  IG_USER_ID, IG_IMAGE_BASE_URL   (IG 與 Threads 共用同一個圖片公開網址)
 """
 import os, csv, json, sys, time
 from datetime import date
@@ -34,35 +34,45 @@ def todays_jobs():
                 jobs.append(row)
     return today, jobs
 
-# ---------- Telegram ----------
-def post_telegram(post):
-    token = os.environ["TG_BOT_TOKEN"]
-    chat_id = os.environ["TG_CHAT_ID"]
-    img = os.path.join(IMG_DIR, post["image_square"])
-    caption = post["tg_caption"]
-    # 用 multipart 上傳圖片 + 文字（sendPhoto，caption 上限 1024 字，足夠）
-    url = f"https://api.telegram.org/bot{token}/sendPhoto"
-    boundary = "----cyboundary"
-    parts = []
-    def field(name, value):
-        parts.append(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n".encode())
-    field("chat_id", chat_id)
-    field("caption", caption)
-    field("parse_mode", "HTML")
-    with open(img, "rb") as fp:
-        imgdata = fp.read()
-    parts.append((f"--{boundary}\r\nContent-Disposition: form-data; name=\"photo\"; "
-                  f"filename=\"{post['image_square']}\"\r\nContent-Type: image/jpeg\r\n\r\n").encode())
-    parts.append(imgdata)
-    parts.append(f"\r\n--{boundary}--\r\n".encode())
-    body = b"".join(parts)
-    req = urllib.request.Request(url, data=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-    with urllib.request.urlopen(req, timeout=60) as r:
+# ---------- Threads ----------
+def post_threads(post):
+    user_id = os.environ["THREADS_USER_ID"]
+    token = os.environ["THREADS_ACCESS_TOKEN"]
+    base = os.environ["IG_IMAGE_BASE_URL"].rstrip("/")  # 與 IG 共用公開圖片網址
+    image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
+    caption = post["threads_caption"]
+    # 步驟1：建立 media container（單張圖片貼文）
+    create = f"https://graph.threads.net/v1.0/{user_id}/threads"
+    data = urllib.parse.urlencode({
+        "media_type": "IMAGE", "image_url": image_url,
+        "text": caption, "access_token": token
+    }).encode()
+    with urllib.request.urlopen(urllib.request.Request(create, data=data), timeout=120) as r:
         resp = json.load(r)
-    if not resp.get("ok"):
-        raise RuntimeError(f"Telegram 失敗: {resp}")
-    log("  ✓ Telegram 發布成功")
+    container = resp.get("id")
+    if not container:
+        raise RuntimeError(f"Threads 建立容器失敗: {resp}")
+    # 步驟2：等 Threads 處理圖片（輪詢狀態，最多約 60 秒）
+    status_url = (f"https://graph.threads.net/v1.0/{container}"
+                  f"?fields=status,error_message&access_token={urllib.parse.quote(token)}")
+    for _ in range(20):
+        time.sleep(3)
+        with urllib.request.urlopen(status_url, timeout=60) as r:
+            st = json.load(r)
+        if st.get("status") == "FINISHED":
+            break
+        if st.get("status") in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"Threads 圖片處理失敗: {st}")
+    # 步驟3：發布
+    publish = f"https://graph.threads.net/v1.0/{user_id}/threads_publish"
+    data2 = urllib.parse.urlencode({
+        "creation_id": container, "access_token": token
+    }).encode()
+    with urllib.request.urlopen(urllib.request.Request(publish, data=data2), timeout=120) as r:
+        resp2 = json.load(r)
+    if "id" not in resp2:
+        raise RuntimeError(f"Threads 發布失敗: {resp2}")
+    log("  ✓ Threads 發布成功")
 
 # ---------- Facebook 粉專 ----------
 def post_facebook(post):
@@ -122,8 +132,8 @@ def post_instagram(post):
         raise RuntimeError(f"IG 發布失敗: {resp2}")
     log("  ✓ Instagram 發布成功")
 
-PLATFORMS = {"tg": post_telegram, "fb": post_facebook, "ig": post_instagram}
-NAMES = {"tg": "Telegram", "fb": "Facebook", "ig": "Instagram"}
+PLATFORMS = {"threads": post_threads, "fb": post_facebook, "ig": post_instagram}
+NAMES = {"threads": "Threads", "fb": "Facebook", "ig": "Instagram"}
 
 def main():
     posts = load_posts()
