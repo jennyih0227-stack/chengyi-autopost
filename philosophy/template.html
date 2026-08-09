@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>每日哲學卡 — 誠毅傳承</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #333; }
+  .card {
+    width: 1080px;
+    height: 1350px;
+    background:
+      radial-gradient(ellipse 700px 500px at 88% 8%, rgba(201,160,99,0.22) 0%, transparent 62%),
+      radial-gradient(ellipse 900px 700px at 5% 100%, rgba(12,42,68,0.9) 0%, transparent 60%),
+      linear-gradient(160deg, #0B1E33 0%, #071322 55%, #050D18 100%);
+    position: relative;
+    overflow: hidden;
+    font-family: 'Noto Sans TC', sans-serif;
+    padding: 96px 90px 88px;
+    display: flex;
+    flex-direction: column;
+  }
+  /* 頂部品牌列 */
+  .brandbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 30px;
+    border-bottom: 1.5px solid rgba(201,160,99,0.35);
+  }
+  .brand-lockup { display: flex; align-items: center; gap: 26px; }
+  .emblem {
+    width: 108px;
+    height: 108px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(201,160,99,0.65);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  }
+  .brand-name {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 40px;
+    color: #E8DCC4;
+    letter-spacing: 2px;
+  }
+  .name-owner { color: #E8722C; }
+  .brand-en {
+    display: block;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    letter-spacing: 6px;
+    color: #C9A063;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .date {
+    text-align: right;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 30px;
+    letter-spacing: 3px;
+    color: rgba(232,220,196,0.75);
+  }
+  .date small { display:block; font-family:'Noto Sans TC'; font-size:20px; letter-spacing:4px; color:#C9A063; margin-top:2px;}
+
+  /* 主體：金句 + 啟示，垂直置中 */
+  .body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 70px;
+  }
+  .quote-mark {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 150px;
+    line-height: 0.7;
+    color: rgba(201,160,99,0.4);
+    height: 70px;
+  }
+  .hero {
+    font-family: 'Noto Serif TC', serif;
+    font-weight: 700;
+    font-size: 82px;
+    color: #FFFFFF;
+    line-height: 1.55;
+    letter-spacing: 1px;
+    margin-top: 24px;
+  }
+
+  /* 今日啟示 強調塊 */
+  .revelation {
+    padding: 46px 48px;
+    background: rgba(201,160,99,0.08);
+    border-left: 6px solid #C9A063;
+    border-radius: 4px;
+  }
+  .rev-label {
+    font-size: 25px;
+    letter-spacing: 5px;
+    color: #C9A063;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .rev-text {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 46px;
+    font-weight: 600;
+    color: #F0B892;
+    line-height: 1.5;
+  }
+
+  /* 底部署名 */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding-top: 34px;
+    border-top: 1.5px solid rgba(201,160,99,0.28);
+  }
+  .slogan {
+    font-family: 'Noto Serif TC', serif;
+    font-size: 26px;
+    letter-spacing: 3px;
+    color: #C9A063;
+  }
+  .author {
+    text-align: right;
+    font-size: 26px;
+    color: rgba(232,220,196,0.7);
+    letter-spacing: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brandbar">
+    <div class="brand-lockup">
+      <img class="emblem" src="emblem.png" alt="誠毅傳承徽章">
+      <div class="brand-name"><span class="name-owner">熊誠毅</span>｜誠毅傳承<span class="brand-en">CHENG YI HERITAGE</span></div>
+    </div>
+    <div class="date">{{DATE}}<small>每日哲學</small></div>
+  </div>
+
+  <div class="body">
+    <div class="hero-wrap">
+      <div class="quote-mark">&ldquo;</div>
+      <div class="hero">{{QUOTE_HTML}}</div>
+    </div>
+
+    <div class="revelation">
+      <div class="rev-label">今 日 啟 示</div>
+      <div class="rev-text">{{REVELATION}}</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="slogan">誠於心 · 毅於行 · 傳於世 · 承於志</div>
+    <div class="author">資產管理 × 財富傳承</div>
+  </div>
+</div>
+</body>
+</html>

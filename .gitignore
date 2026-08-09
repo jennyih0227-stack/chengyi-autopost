@@ -2,3 +2,7 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# 每日哲學：發文腳本間傳遞用的暫存檔（不進版控）
+philosophy/_content.json
+philosophy/_render.html
