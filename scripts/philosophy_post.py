@@ -102,37 +102,36 @@ def post_line(image_url, c):
     log("  ✓ LINE 發送成功")
 
 
-# ---------- Facebook 粉專（直接上傳檔案）----------
-def post_facebook(image_path, c):
+# ---------- Facebook 粉專（用公開圖片網址，較穩、附重試）----------
+def post_facebook(image_url, c):
     page_id = os.environ["FB_PAGE_ID"]
     token = os.environ["FB_PAGE_TOKEN"]
     caption = build_caption(c)
     url = f"https://graph.facebook.com/v21.0/{page_id}/photos"
-    boundary = "----cyphilboundary"
-    parts = []
-
-    def field(name, value):
-        parts.append((f"--{boundary}\r\nContent-Disposition: form-data; "
-                      f"name=\"{name}\"\r\n\r\n{value}\r\n").encode())
-
-    field("caption", caption)
-    field("access_token", token)
-    with open(image_path, "rb") as fp:
-        imgdata = fp.read()
-    fname = os.path.basename(image_path)
-    parts.append((f"--{boundary}\r\nContent-Disposition: form-data; "
-                  f"name=\"source\"; filename=\"{fname}\"\r\n"
-                  f"Content-Type: image/jpeg\r\n\r\n").encode())
-    parts.append(imgdata)
-    parts.append(f"\r\n--{boundary}--\r\n".encode())
-    req = urllib.request.Request(
-        url, data=b"".join(parts),
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        resp = json.load(r)
-    if "id" not in resp and "post_id" not in resp:
-        raise RuntimeError(f"Facebook 回傳異常：{resp}")
-    log("  ✓ Facebook 發送成功")
+    data = urllib.parse.urlencode({
+        "url": image_url, "caption": caption, "access_token": token
+    }).encode()
+    last = None
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(
+                    urllib.request.Request(url, data=data), timeout=120) as r:
+                resp = json.load(r)
+            if "id" in resp or "post_id" in resp:
+                log("  ✓ Facebook 發送成功")
+                return
+            last = resp
+        except urllib.error.HTTPError as e:
+            try:
+                last = e.read().decode(errors="ignore")
+            except Exception:
+                last = f"HTTP {e.code}"
+            log(f"  Facebook 第 {attempt} 次失敗（HTTP {e.code}），重試中…")
+        except Exception as e:
+            last = str(e)
+            log(f"  Facebook 第 {attempt} 次失敗（{e}），重試中…")
+        time.sleep(6)
+    raise RuntimeError(f"Facebook 回傳異常：{last}")
 
 
 # ---------- Instagram ----------
@@ -206,7 +205,6 @@ def post_threads(image_url, c):
 
 def main():
     c = load_content()
-    image_path = os.path.join(ROOT, c["image_file"])
     image_url = pages_base_url() + "/" + c["image_file"]
     only = {p.strip() for p in os.environ.get("ONLY", "").split(",") if p.strip()}
 
@@ -215,14 +213,14 @@ def main():
 
     log(f"發布 {c['date']} 每日哲學｜金句：{c['quote']}")
 
-    # 需要公開網址的平台，先確認圖片上線
-    if any(want(p) for p in ("line", "ig", "threads")):
+    # 四平台都用公開圖片網址，發文前先確認圖片已上線
+    if any(want(p) for p in ("line", "fb", "ig", "threads")):
         wait_until_live(image_url)
 
     errors = []
     plan = [
         ("line", "LINE", lambda: post_line(image_url, c)),
-        ("fb", "Facebook", lambda: post_facebook(image_path, c)),
+        ("fb", "Facebook", lambda: post_facebook(image_url, c)),
         ("ig", "Instagram", lambda: post_instagram(image_url, c)),
         ("threads", "Threads", lambda: post_threads(image_url, c)),
     ]
