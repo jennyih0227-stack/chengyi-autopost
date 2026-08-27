@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>旗艦插畫 — 誠毅傳承</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #333; }
+  .card {
+    width: 1080px; height: 1350px; position: relative; overflow: hidden;
+    font-family: 'Noto Sans TC', sans-serif; background: #071322;
+  }
+  .art {
+    position: absolute; top: 0; left: 0;
+    width: 1080px; height: 900px; object-fit: cover;
+  }
+  /* 插畫下緣漸層融入深色帶 */
+  .scrim {
+    position: absolute; top: 620px; left: 0; width: 1080px; height: 320px;
+    background: linear-gradient(to bottom, rgba(7,19,34,0) 0%, rgba(7,19,34,0.85) 70%, #071322 100%);
+  }
+  .band {
+    position: absolute; bottom: 0; left: 0; width: 1080px; height: 470px;
+    background: linear-gradient(160deg, #0B1E33 0%, #071322 100%);
+    padding: 40px 80px 70px; display: flex; flex-direction: column;
+  }
+  .brandrow { display: flex; align-items: center; gap: 20px; margin-bottom: 26px; }
+  .emblem {
+    width: 76px; height: 76px; border-radius: 50%;
+    object-fit: cover; border: 2px solid #C9A063;
+  }
+  .brand-name { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 30px; color: #E8DCC4; letter-spacing: 1px; }
+  .brand-name .accent { color: #E8722C; }
+  .brand-en { display:block; font-family:'Cormorant Garamond',serif; font-size:17px; letter-spacing:4px; color:#C9A063; }
+  .title {
+    font-family: 'Noto Serif TC', serif; font-weight: 900; font-size: 62px;
+    color: #FFFFFF; line-height: 1.35; letter-spacing: 1px;
+  }
+  .title .hl { color: #F0B892; }
+  .message {
+    font-size: 30px; color: rgba(232,220,196,0.85); line-height: 1.6;
+    margin-top: 22px; flex: 1;
+  }
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; }
+  .slogan { font-family:'Noto Serif TC',serif; font-size: 23px; color:#C9A063; letter-spacing:3px; }
+  .handle { font-size: 22px; color: rgba(232,220,196,0.55); }
+</style>
+</head>
+<body>
+<div class="card">
+  <img class="art" src="_art.png" alt="插畫">
+  <div class="scrim"></div>
+  <div class="band">
+    <div class="brandrow">
+      <img class="emblem" src="emblem.png" alt="徽章">
+      <div class="brand-name"><span class="accent">熊誠毅</span>｜誠毅傳承<span class="brand-en">CHENG YI HERITAGE</span></div>
+    </div>
+    <div class="title">{{TITLE_HTML}}</div>
+    <div class="message">{{MESSAGE}}</div>
+    <div class="foot">
+      <div class="slogan">誠於心 · 毅於行 · 傳於世</div>
+      <div class="handle">@chengyi.heritage</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
