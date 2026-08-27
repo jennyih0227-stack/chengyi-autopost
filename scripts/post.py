@@ -35,24 +35,13 @@ def todays_jobs():
     return today, jobs
 
 # ---------- Threads ----------
-def post_threads(post):
-    user_id = os.environ["THREADS_USER_ID"]
-    token = os.environ["THREADS_ACCESS_TOKEN"]
-    base = os.environ["IG_IMAGE_BASE_URL"].rstrip("/")  # 與 IG 共用公開圖片網址
-    image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
-    caption = post["threads_caption"]
-    # 步驟1：建立 media container（單張圖片貼文）
-    create = f"https://graph.threads.net/v1.0/{user_id}/threads"
-    data = urllib.parse.urlencode({
-        "media_type": "IMAGE", "image_url": image_url,
-        "text": caption, "access_token": token
-    }).encode()
-    with urllib.request.urlopen(urllib.request.Request(create, data=data), timeout=120) as r:
-        resp = json.load(r)
-    container = resp.get("id")
-    if not container:
-        raise RuntimeError(f"Threads 建立容器失敗: {resp}")
-    # 步驟2：等 Threads 處理圖片（輪詢狀態，最多約 60 秒）
+def _th_create(user_id, params):
+    data = urllib.parse.urlencode(params).encode()
+    url = f"https://graph.threads.net/v1.0/{user_id}/threads"
+    with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
+        return json.load(r)
+
+def _th_wait(container, token):
     status_url = (f"https://graph.threads.net/v1.0/{container}"
                   f"?fields=status,error_message&access_token={urllib.parse.quote(token)}")
     for _ in range(20):
@@ -60,19 +49,49 @@ def post_threads(post):
         with urllib.request.urlopen(status_url, timeout=60) as r:
             st = json.load(r)
         if st.get("status") == "FINISHED":
-            break
+            return
         if st.get("status") in ("ERROR", "EXPIRED"):
             raise RuntimeError(f"Threads 圖片處理失敗: {st}")
-    # 步驟3：發布
+
+def post_threads(post):
+    user_id = os.environ["THREADS_USER_ID"]
+    token = os.environ["THREADS_ACCESS_TOKEN"]
+    base = os.environ["IG_IMAGE_BASE_URL"].rstrip("/")  # 與 IG 共用公開圖片網址
+    caption = post["threads_caption"]
+    images = post.get("images")
+    if images and len(images) > 1:
+        # 輪播：每張圖建 child container，再組成 CAROUSEL
+        children = []
+        for img in images:
+            image_url = f"{base}/{urllib.parse.quote(img)}"
+            resp = _th_create(user_id, {"media_type": "IMAGE", "image_url": image_url,
+                                        "is_carousel_item": "true", "access_token": token})
+            cid = resp.get("id")
+            if not cid:
+                raise RuntimeError(f"Threads 子容器失敗: {resp}")
+            _th_wait(cid, token)
+            children.append(cid)
+        resp = _th_create(user_id, {"media_type": "CAROUSEL", "children": ",".join(children),
+                                    "text": caption, "access_token": token})
+        container = resp.get("id")
+        if not container:
+            raise RuntimeError(f"Threads 輪播容器失敗: {resp}")
+        _th_wait(container, token)
+    else:
+        image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
+        resp = _th_create(user_id, {"media_type": "IMAGE", "image_url": image_url,
+                                    "text": caption, "access_token": token})
+        container = resp.get("id")
+        if not container:
+            raise RuntimeError(f"Threads 建立容器失敗: {resp}")
+        _th_wait(container, token)
     publish = f"https://graph.threads.net/v1.0/{user_id}/threads_publish"
-    data2 = urllib.parse.urlencode({
-        "creation_id": container, "access_token": token
-    }).encode()
+    data2 = urllib.parse.urlencode({"creation_id": container, "access_token": token}).encode()
     with urllib.request.urlopen(urllib.request.Request(publish, data=data2), timeout=120) as r:
         resp2 = json.load(r)
     if "id" not in resp2:
         raise RuntimeError(f"Threads 發布失敗: {resp2}")
-    log("  ✓ Threads 發布成功")
+    log("  ✓ Threads 發布成功" + ("（輪播 %d 張）" % len(images) if images and len(images) > 1 else ""))
 
 # ---------- Facebook 粉專 ----------
 def post_facebook(post):
@@ -104,33 +123,47 @@ def post_facebook(post):
     log("  ✓ Facebook 發布成功")
 
 # ---------- Instagram ----------
+def _fb_post(url, params):
+    data = urllib.parse.urlencode(params).encode()
+    with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
+        return json.load(r)
+
 def post_instagram(post):
     ig_user = os.environ["IG_USER_ID"]
     token = os.environ["FB_PAGE_TOKEN"]  # IG 用同一組 Page Token
     base = os.environ["IG_IMAGE_BASE_URL"].rstrip("/")
-    image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
     caption = post["ig_caption"]
-    # 步驟1：建立 media container
-    create = f"https://graph.facebook.com/v21.0/{ig_user}/media"
-    data = urllib.parse.urlencode({
-        "image_url": image_url, "caption": caption, "access_token": token
-    }).encode()
-    with urllib.request.urlopen(urllib.request.Request(create, data=data), timeout=120) as r:
-        resp = json.load(r)
-    container = resp.get("id")
-    if not container:
-        raise RuntimeError(f"IG 建立容器失敗: {resp}")
-    time.sleep(5)  # 等 IG 處理圖片
-    # 步驟2：發布
-    publish = f"https://graph.facebook.com/v21.0/{ig_user}/media_publish"
-    data2 = urllib.parse.urlencode({
-        "creation_id": container, "access_token": token
-    }).encode()
-    with urllib.request.urlopen(urllib.request.Request(publish, data=data2), timeout=120) as r:
-        resp2 = json.load(r)
+    images = post.get("images")
+    media_url = f"https://graph.facebook.com/v21.0/{ig_user}/media"
+    if images and len(images) > 1:
+        # 輪播：先為每張圖建立 child container，再組成 CAROUSEL 母容器
+        children = []
+        for img in images:
+            image_url = f"{base}/{urllib.parse.quote(img)}"
+            resp = _fb_post(media_url, {"image_url": image_url, "is_carousel_item": "true", "access_token": token})
+            cid = resp.get("id")
+            if not cid:
+                raise RuntimeError(f"IG 子容器失敗: {resp}")
+            children.append(cid)
+            time.sleep(3)
+        resp = _fb_post(media_url, {"media_type": "CAROUSEL", "children": ",".join(children),
+                                    "caption": caption, "access_token": token})
+        container = resp.get("id")
+        if not container:
+            raise RuntimeError(f"IG 輪播容器失敗: {resp}")
+        time.sleep(6)
+    else:
+        image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
+        resp = _fb_post(media_url, {"image_url": image_url, "caption": caption, "access_token": token})
+        container = resp.get("id")
+        if not container:
+            raise RuntimeError(f"IG 建立容器失敗: {resp}")
+        time.sleep(5)
+    resp2 = _fb_post(f"https://graph.facebook.com/v21.0/{ig_user}/media_publish",
+                     {"creation_id": container, "access_token": token})
     if "id" not in resp2:
         raise RuntimeError(f"IG 發布失敗: {resp2}")
-    log("  ✓ Instagram 發布成功")
+    log("  ✓ Instagram 發布成功" + ("（輪播 %d 張）" % len(images) if images and len(images) > 1 else ""))
 
 PLATFORMS = {"threads": post_threads, "fb": post_facebook, "ig": post_instagram}
 NAMES = {"threads": "Threads", "fb": "Facebook", "ig": "Instagram"}
