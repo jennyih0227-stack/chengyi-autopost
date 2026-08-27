@@ -6,3 +6,8 @@ __pycache__/
 # 每日哲學：發文腳本間傳遞用的暫存檔（不進版控）
 philosophy/_content.json
 philosophy/_render.html
+
+# 九宮格漫畫：即時劇本與暫存檔（不進版控）
+comic/_script.json
+comic/_content.json
+comic/_render.html

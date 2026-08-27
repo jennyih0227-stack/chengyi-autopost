@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>九宮格漫畫 — 誠毅小劇場</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Cormorant+Garamond:wght@600&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #333; }
+  .card {
+    width: 1080px;
+    height: 1350px;
+    background:
+      radial-gradient(ellipse 600px 400px at 90% 5%, rgba(232,114,44,0.12) 0%, transparent 60%),
+      linear-gradient(165deg, #FBF6EC 0%, #F5ECDA 100%);
+    font-family: 'Noto Sans TC', sans-serif;
+    padding: 54px 54px 44px;
+    display: flex;
+    flex-direction: column;
+  }
+  .head { display: flex; align-items: center; gap: 22px; margin-bottom: 30px; }
+  .emblem {
+    width: 84px; height: 84px; border-radius: 50%;
+    object-fit: cover; border: 2px solid #E8722C;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
+  .head-txt { flex: 1; }
+  .series { font-size: 40px; font-weight: 900; color: #0B1E33; letter-spacing: 1px; }
+  .series .accent { color: #E8722C; }
+  .sub { font-size: 23px; color: #6b7280; font-weight: 500; margin-top: 3px; }
+  .ep {
+    font-family: 'Cormorant Garamond', serif; font-size: 30px;
+    color: #E8722C; font-weight: 600; letter-spacing: 2px;
+    background: rgba(232,114,44,0.1); padding: 8px 20px; border-radius: 30px;
+  }
+  .grid {
+    flex: 1; display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 18px;
+  }
+  .panel {
+    background: #fff; border-radius: 18px; border: 2px solid #EADFC9;
+    box-shadow: 0 6px 16px rgba(11,30,51,0.06);
+    padding: 22px 20px 18px; position: relative;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; overflow: hidden;
+  }
+  .num {
+    position: absolute; top: 12px; left: 14px;
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #0B1E33; color: #fff; font-size: 22px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .emoji { font-size: 96px; line-height: 1; margin: 6px 0 14px; }
+  .line { font-size: 27px; font-weight: 500; color: #1f2937; line-height: 1.4; }
+  .who { font-weight: 700; color: #E8722C; }
+  .panel.final {
+    background: linear-gradient(150deg, #12314F 0%, #0B1E33 100%);
+    border-color: #E8722C;
+  }
+  .panel.final .emoji { font-size: 72px; margin-bottom: 10px; }
+  .panel.final .line { color: #fff; font-weight: 700; font-size: 26px; }
+  .panel.final .tag { color: #F0B892; font-size: 21px; margin-top: 8px; }
+  .foot {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 26px; padding-top: 18px; border-top: 2px dashed #E3D6BC;
+  }
+  .foot .brand { font-size: 24px; font-weight: 700; color: #0B1E33; }
+  .foot .brand .accent { color: #E8722C; }
+  .foot .handle { font-size: 22px; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <img class="emblem" src="emblem.png" alt="徽章">
+    <div class="head-txt">
+      <div class="series">{{TITLE_HTML}}</div>
+      <div class="sub">{{SUBTITLE}}</div>
+    </div>
+    <div class="ep">EP.{{EP}}</div>
+  </div>
+
+  <div class="grid">
+    {{GRID}}
+  </div>
+
+  <div class="foot">
+    <div class="brand">熊<span class="accent">誠毅</span>｜誠毅傳承</div>
+    <div class="handle">@chengyi.heritage</div>
+  </div>
+</div>
+</body>
+</html>
