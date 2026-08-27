@@ -34,6 +34,19 @@ DEFAULT_PAGES = "https://jennyih0227-stack.github.io/chengyi-autopost"
 def log(m): print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
+def load_dotenv():
+    """本機執行時，從 chengyi-autopost/.env 載入金鑰；已存在的環境變數優先（GitHub Actions）。"""
+    envp = os.path.join(ROOT, ".env")
+    if not os.path.exists(envp):
+        return
+    for line in open(envp, encoding="utf-8"):
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip())
+
+
 def pages_base():
     if os.environ.get("PAGES_BASE_URL"):
         return os.environ["PAGES_BASE_URL"].rstrip("/")
@@ -152,6 +165,7 @@ def post_threads(image_url, caption):
 
 
 def main():
+    load_dotenv()
     path = os.environ.get("CONTENT_JSON", DEFAULT_CONTENT)
     with open(path, encoding="utf-8") as f:
         c = json.load(f)
