@@ -12,7 +12,7 @@
 """
 import os, csv, json, sys, time
 from datetime import date
-import urllib.request, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 POSTS_DIR = os.path.join(ROOT, "posts")
@@ -38,8 +38,12 @@ def todays_jobs():
 def _th_create(user_id, params):
     data = urllib.parse.urlencode(params).encode()
     url = f"https://graph.threads.net/v1.0/{user_id}/threads"
-    with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")
+        raise RuntimeError(f"HTTP {e.code}: {body}") from None
 
 def _th_wait(container, token):
     status_url = (f"https://graph.threads.net/v1.0/{container}"
@@ -125,8 +129,26 @@ def post_facebook(post):
 # ---------- Instagram ----------
 def _fb_post(url, params):
     data = urllib.parse.urlencode(params).encode()
-    with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data=data), timeout=120) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")
+        raise RuntimeError(f"HTTP {e.code}: {body}") from None
+
+def _ig_wait(container, token):
+    """等 IG 圖片容器處理完成（輪詢 status_code，最多約 90 秒）。"""
+    url = (f"https://graph.facebook.com/v21.0/{container}"
+           f"?fields=status_code&access_token={urllib.parse.quote(token)}")
+    for _ in range(30):
+        time.sleep(3)
+        with urllib.request.urlopen(url, timeout=60) as r:
+            st = json.load(r)
+        code = st.get("status_code")
+        if code == "FINISHED":
+            return
+        if code in ("ERROR", "EXPIRED"):
+            raise RuntimeError(f"IG 圖片處理失敗: {st}")
 
 def post_instagram(post):
     ig_user = os.environ["IG_USER_ID"]
@@ -136,7 +158,7 @@ def post_instagram(post):
     images = post.get("images")
     media_url = f"https://graph.facebook.com/v21.0/{ig_user}/media"
     if images and len(images) > 1:
-        # 輪播：先為每張圖建立 child container，再組成 CAROUSEL 母容器
+        # 輪播：先為每張圖建立 child container 並等它處理完，再組成 CAROUSEL 母容器
         children = []
         for img in images:
             image_url = f"{base}/{urllib.parse.quote(img)}"
@@ -144,14 +166,14 @@ def post_instagram(post):
             cid = resp.get("id")
             if not cid:
                 raise RuntimeError(f"IG 子容器失敗: {resp}")
+            _ig_wait(cid, token)   # 等這張圖處理完成，避免組輪播時 500
             children.append(cid)
-            time.sleep(3)
         resp = _fb_post(media_url, {"media_type": "CAROUSEL", "children": ",".join(children),
                                     "caption": caption, "access_token": token})
         container = resp.get("id")
         if not container:
             raise RuntimeError(f"IG 輪播容器失敗: {resp}")
-        time.sleep(6)
+        _ig_wait(container, token)  # 等輪播母容器處理完成再發布
     else:
         image_url = f"{base}/{urllib.parse.quote(post['image_square'])}"
         resp = _fb_post(media_url, {"image_url": image_url, "caption": caption, "access_token": token})
