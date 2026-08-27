@@ -163,20 +163,43 @@ def post_instagram(image_url, c):
 
 
 # ---------- Threads ----------
+def _open_json(req, timeout=120):
+    """送出請求並回傳 JSON；若是 HTTP 錯誤，把 Meta 回傳的詳細訊息一併拋出。"""
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode(errors="ignore")
+        except Exception:
+            body = ""
+        raise RuntimeError(f"HTTP {e.code} — {body}") from None
+
+
+def build_threads_caption(c):
+    """Threads 內文上限 500 字，且只吃單一 hashtag；用精簡版避免被擋。"""
+    lines = [
+        c["quote"], "",
+        "【今日啟示】" + c["revelation"], "",
+        "—— 熊誠毅｜誠毅傳承",
+        "#每日哲學",
+    ]
+    text = "\n".join(lines)
+    if len(text) > 480:
+        text = text[:477] + "…"
+    return text
+
+
 def post_threads(image_url, c):
     user_id = os.environ["THREADS_USER_ID"]
     token = os.environ["THREADS_ACCESS_TOKEN"]
-    caption = build_caption(c)
-    if len(caption) > 490:            # Threads 內文上限 500 字，保守截斷
-        caption = caption[:487] + "…"
+    caption = build_threads_caption(c)
     create = f"https://graph.threads.net/v1.0/{user_id}/threads"
     data = urllib.parse.urlencode({
         "media_type": "IMAGE", "image_url": image_url,
         "text": caption, "access_token": token
     }).encode()
-    with urllib.request.urlopen(
-            urllib.request.Request(create, data=data), timeout=120) as r:
-        resp = json.load(r)
+    resp = _open_json(urllib.request.Request(create, data=data))
     container = resp.get("id")
     if not container:
         raise RuntimeError(f"Threads 建立容器失敗：{resp}")
@@ -185,8 +208,7 @@ def post_threads(image_url, c):
                   f"&access_token={urllib.parse.quote(token)}")
     for _ in range(20):
         time.sleep(3)
-        with urllib.request.urlopen(status_url, timeout=60) as r:
-            st = json.load(r)
+        st = _open_json(urllib.request.Request(status_url), timeout=60)
         if st.get("status") == "FINISHED":
             break
         if st.get("status") in ("ERROR", "EXPIRED"):
@@ -195,9 +217,7 @@ def post_threads(image_url, c):
     data2 = urllib.parse.urlencode({
         "creation_id": container, "access_token": token
     }).encode()
-    with urllib.request.urlopen(
-            urllib.request.Request(publish, data=data2), timeout=120) as r:
-        resp2 = json.load(r)
+    resp2 = _open_json(urllib.request.Request(publish, data=data2))
     if "id" not in resp2:
         raise RuntimeError(f"Threads 發布失敗：{resp2}")
     log("  ✓ Threads 發送成功")
