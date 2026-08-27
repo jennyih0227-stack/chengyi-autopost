@@ -12,6 +12,5 @@ comic/_script.json
 comic/_content.json
 comic/_render.html
 
-# 旗艦插畫：生圖與渲染暫存檔（_spec.json 要進版控供 workflow 讀取）
-flagship/_art.png
+# 旗艦插畫：_spec.json 與 _art.png 要進版控（供 workflow 讀取與只改字重疊）
 flagship/_render.html

@@ -95,25 +95,32 @@ def compose(spec):
         pg.wait_for_timeout(2500)
         pg.query_selector(".card").screenshot(path=out, type="jpeg", quality=92)
         b.close()
-    for f in (render_html, ART):
-        try:
-            os.remove(f)
-        except OSError:
-            pass
+    try:
+        os.remove(render_html)   # 只刪暫存 HTML；插畫 _art.png 保留供之後只改字重疊
+    except OSError:
+        pass
     return out
 
 
 def main():
-    key = os.environ.get("GEMINI_KEY")
-    if not key:
-        print("✗ 缺 GEMINI_KEY"); sys.exit(1)
     with open(SPEC, encoding="utf-8") as f:
         spec = json.load(f)
-    print(f"生成插畫：{spec.get('slug')}")
-    img = gen_image(spec["art_prompt"], key)
-    with open(ART, "wb") as f:
-        f.write(img)
-    print(f"  插畫暫存：{len(img)//1024} KB")
+    compose_only = os.environ.get("COMPOSE_ONLY", "").strip().lower() in ("1", "true", "yes")
+
+    if compose_only:
+        if not os.path.exists(ART):
+            print("✗ COMPOSE_ONLY 模式需要既有的 flagship/_art.png，但找不到"); sys.exit(1)
+        print("只重疊文字模式（沿用現有插畫，不重新生圖）")
+    else:
+        key = os.environ.get("GEMINI_KEY")
+        if not key:
+            print("✗ 缺 GEMINI_KEY"); sys.exit(1)
+        print(f"生成插畫：{spec.get('slug')}")
+        img = gen_image(spec["art_prompt"], key)
+        with open(ART, "wb") as f:
+            f.write(img)
+        print(f"  插畫暫存：{len(img)//1024} KB")
+
     out = compose(spec)
     print(f"✓ 旗艦成品：posts/flagship/{os.path.basename(out)}（{os.path.getsize(out)//1024} KB）")
 

@@ -2,6 +2,11 @@ name: 旗艦插畫生成（測試）
 
 on:
   workflow_dispatch:
+    inputs:
+      compose_only:
+        description: "只重疊文字（沿用現有插畫、不重新生圖）填 true；要新插畫則留空"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -27,12 +32,13 @@ jobs:
       - name: 生成旗艦插畫（Gemini 生圖 + 疊字）
         env:
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+          COMPOSE_ONLY: ${{ github.event.inputs.compose_only }}
         run: python scripts/flagship_gen.py
 
-      - name: 把成品 commit 上 GitHub
+      - name: 把成品與插畫 commit 上 GitHub
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add posts/flagship/
-          git commit -m "旗艦插畫測試 $(date -u +%Y-%m-%d)" || echo "沒有新成品"
+          git add posts/flagship/ flagship/_art.png
+          git commit -m "旗艦插畫 $(date -u +%Y-%m-%d %H:%M)" || echo "沒有新成品"
           git push
