@@ -14,3 +14,6 @@ comic/_render.html
 
 # 旗艦插畫：_spec.json 與 _art.png 要進版控（供 workflow 讀取與只改字重疊）
 flagship/_render.html
+
+# 輪播/素材發布：本機發布設定（圖片本身要 commit 當圖床）
+lifeplanning/_carousel.json
